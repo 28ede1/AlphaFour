@@ -243,11 +243,12 @@ def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
             return None
 
         # memoize 
-        if board in playbook:
-            best_moves = playbook[board]
+        board_key = tuple(board)
+        if board_key  in playbook:
+            best_moves = playbook[board_key]
         else:
             best_value, best_moves = minimax(board, evaluation_function, player, player, num_plys)
-            playbook[tuple(board)] = best_moves
+            playbook[board_key] = best_moves
 
         if len(best_moves) == 0:
             return None
