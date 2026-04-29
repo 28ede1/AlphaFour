@@ -222,3 +222,35 @@ def initialize_my_player_fn(num_plys=4):
         else:
             return random.choice(best_moves)
     return my_player_fn
+
+def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
+    
+    def my_player_fn(board, player):
+        """
+        Create player_fn that choose the best next move to make for player out of all immediate possible moves.
+        Adds board state along with best moves evaluated when called to a playbook dictionary.
+
+        Args: 
+            board (list[int]): list of board positions with 0s, 1s, 2s
+            player (int): represents the player (1 or 2)
+        Return:
+            Return integer representing column to drop the next game piece into 
+
+        """
+        num_cols = 7
+        valid_moves = [i for i in range(num_cols) if board[i] == 0]
+        if len(valid_moves) == 0:
+            return None
+
+        # memoize 
+        if board in playbook:
+            best_moves = playbook[board]
+        else:
+            best_value, best_moves = minimax(board, evaluation_function, player, player, num_plys)
+            playbook[tuple(board)] = best_moves
+
+        if len(best_moves) == 0:
+            return None
+        else:
+            return random.choice(best_moves)
+    return my_player_fn
