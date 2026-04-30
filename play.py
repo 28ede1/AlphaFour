@@ -8,6 +8,18 @@ from tqdm import tqdm
 
 
 def play_game(player1_fn, player2_fn, min_delay=0.2, visualize=True):
+    """
+        Play a single game of connect four using the two player functions.
+        Displays board state in terminal each round.
+
+        Args: 
+            player1_fn : function that determines what move player 1 should make
+            player2_fn : function that determines what move player 2 should make
+            min_delay (float): delay used for the visualization
+            visualize (boolean): whether or not the game should be visualized in terminal
+        Return:
+            Return integer representing who the winner of the game is 
+    """
     def clear_screen():
         # Clear screen and move cursor to (0,0)
         sys.stdout.write("\033[2J\033[H")
@@ -44,6 +56,18 @@ def play_game(player1_fn, player2_fn, min_delay=0.2, visualize=True):
 
 
 def play_tournament(player1_fn, player2_fn, num_rounds):
+    """
+        Plays a tournament between player 1 and player 2 for some number of rounds.
+        In each round, two games are player, one whether player 1 is the first player to make a move, 
+        and another where player 2 is the first player. This ensures fairness w respect to turn order.
+
+        The result of the number of rounds * 2 is printed in string format.
+        Args: 
+            player1_fn : function that determines what move player 1 should make
+            player2_fn : function that determines what move player 2 should make
+            num_rounds (int): number of rounds to play
+
+    """
     p1_wins, p2_wins, ties = 0, 0, 0
     for _ in tqdm(range(num_rounds)):
         winner = play_game(player1_fn, player2_fn, visualize=False)
