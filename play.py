@@ -85,6 +85,7 @@ def play_tournament(player1_fn, player2_fn, num_rounds):
         elif winner == 2:
             p1_wins += 1
     print(f"P1-P2-T: {p1_wins}-{p2_wins}-{ties}")
+    return p1_wins, p2_wins, ties
 
 
 if __name__ == "__main__":
