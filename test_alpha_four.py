@@ -63,15 +63,45 @@ def test_convert_board_state_to_vector():
     expected_result_board_4_feature_vector = torch.tensor([1] + [0, 1, 0, 0, 0, 0, 0] + [1,0,0, 1,0,0, 0,1,0, 1,0,0, 0,0,1, 1,0,0, 
     1,0,0, 1,0,0, 0,0,1, 0,1,0, 1,0,0, 0,0,1, 1,0,0, 1,0,0, 0,1,0, 0,0,1, 0,0,1, 0,1,0, 0,1,0, 1,0,0, 1,0,0, 0,0,1, 0,1,0, 
     0,1,0, 0,0,1, 0,0,1, 0,1,0, 1,0,0, 0,1,0, 0,0,1, 0,0,1, 0,1,0, 0,1,0, 0,0,1, 1,0,0, 0,0,1, 0,1,0, 0,1,0, 0,0,1, 0,0,1,
-    0,1,0, 1,0,0 ])
+    0,1,0, 1,0,0])
 
     move_test_4 = 1
 
     assert torch.equal(expected_result_board_4_feature_vector, convert_board_state_to_vector(test_board_4, move_test_4))
-    
+
+def test_load_training_data():
+    pb_1 = {
+        (0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0,
+         0,0,0,0,0,0,0): [3]
+    }
+
+    expected_x_1 = torch.tensor([
+        [1] + [1, 0, 0, 0, 0, 0, 0] + [1, 0, 0] * 42,
+        [1] + [0, 1, 0, 0, 0, 0, 0] + [1, 0, 0] * 42,
+        [1] + [0, 0, 1, 0, 0, 0, 0] + [1, 0, 0] * 42,
+        [1] + [0, 0, 0, 1, 0, 0, 0] + [1, 0, 0] * 42,
+        [1] + [0, 0, 0, 0, 1, 0, 0] + [1, 0, 0] * 42,
+        [1] + [0, 0, 0, 0, 0, 1, 0] + [1, 0, 0] * 42,
+        [1] + [0, 0, 0, 0, 0, 0, 1] + [1, 0, 0] * 42
+    ])
+
+    expected_y_1 = torch.tensor([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0])
+
+    actual_x_1, actual_y_1 = load_training_data(pb_1)
+
+    assert torch.equal(expected_x_1, actual_x_1)
+    assert torch.equal(expected_y_1, actual_y_1)
+
 
 if __name__ == "__main__":
     test_convert_board_state_to_vector()
     print('convert_board_state_to_vector functions correctly! ✅')
+
+    test_load_training_data()
+    print('load_training_data functions correctly! ✅')
 
     

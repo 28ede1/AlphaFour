@@ -8,7 +8,7 @@ def convert_board_state_to_vector(board, next_move):
     
     Element 0 (bias) always have a value of 1
     Elements 1-7 represent the proposed move (all except k+1 should be 0, where k is the proposed move)
-    Elements 8-141 are triples (a, b, c) corresponding to each cell of the connect four board where
+    Elements 8-141 are triples (a, b, c) corresponding to each cell of the current connect four board where
 
     a is 1 if the cell is empty else a is 0, 
     b is 1 if the cell contains a red checker else b is 0, and 
@@ -39,25 +39,45 @@ def convert_board_state_to_vector(board, next_move):
     return result
 
 
-# def load_training_data(playbook):
-#     result_x = []
-#     result_y = []
+def load_training_data(playbook):
+    """
+    Given a playbook,
+    return a matrix feature vector representation as well an output vector.
+
+    For every board state in the playbook dictionary, for each column in the board state that is not full, 
+    create a feature vector of size 134.
+
+    For every board state in the playbook dictionary, for each column in the board that that is not full, 
+    add a value of 1.0 to the outcome vector if that board + move combo is optimal, and 0.0 if not.
 
 
-#     for board in playbook:
-#         for i in range(9):
-#             if board[i] == 0:
-#                 feature_vector = convert_board_state_to_vector(board, i).tolist()
-#                 result_x.append(feature_vector)
+    Args: 
+        playbook (dict[tuple[int], list[int]]):
+            Mapping from a flattened 6x7 board state (length 42 tuple)
+            to a list of optimal column moves (0–6).
 
-#                 if i in playbook[board]:
-#                     result_y.append(1.0)
-#                 else:
-#                     result_y.append(0.0)
+    Return:
+        x (torch.Tensor): Feature matrix of shape (N, 134)
+        y (torch.Tensor): Binary labels of shape (N,)
+            where N = total number of legal moves across all states
+    """
+    result_x = []
+    result_y = []
 
-#     result_y = torch.tensor(result_y)
-#     result_x = torch.tensor(result_x)
-#     return result_x, result_y
+    for board in playbook:
+        for i in range(7):
+            if board[i] == 0:
+                feature_vector = convert_board_state_to_vector(board, i).tolist()
+                result_x.append(feature_vector)
+
+                if i in playbook[board]:
+                    result_y.append(1.0)
+                else:
+                    result_y.append(0.0)
+
+    result_y = torch.tensor(result_y)
+    result_x = torch.tensor(result_x)
+    return result_x, result_y
 
 
 # def initialize_params(input_dim=37, hidden_dim=64):
@@ -88,7 +108,6 @@ def convert_board_state_to_vector(board, next_move):
 #     loss = -1 * torch.log(y*output +(1-y)*(1-output))
 #     return torch.mean(loss)
 
-
 # def evaluate_neural_net(parameters, x, y):
 #     accuracy = compute_nn_accuracy(parameters, x, y)
 #     ai_player_fn = create_nn_player_fn(parameters)
@@ -96,7 +115,6 @@ def convert_board_state_to_vector(board, next_move):
 #     accuracy_msg = f"Train accuracy: {accuracy: .3f}"
 #     tournament_msg = f"Tournament performance: {wins}-{losses}-{ties}"
 #     print(accuracy_msg + "; " + tournament_msg)
-
 
 # def compute_nn_accuracy(parameters, x, y):
 #     raise NotImplementedError("compute_nn_accuracy has not yet been implemented")
