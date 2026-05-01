@@ -76,23 +76,60 @@ def evaluation_function(board, player):
             center_count -= 1
         center_index -= 7
 
-    board_score += center_count * 5
+    board_score += center_count * 10
 
     # consider the number of columns where you have 3, 2, or just 1 of the same color in column, seperately
     # add negative weightings for the opposing player to get the ai to play more defensively
     board_score += count_n_in_a_column_threats(board, player, 3) * 8
-    board_score -= count_n_in_a_column_threats(board, opposing_player, 3) * 8.4
+    board_score -= count_n_in_a_column_threats(board, opposing_player, 3) * 8.1
 
     # consider the number of columns where you have 2 in a column (less threatening then 3 in a row)
 
     board_score += count_n_in_a_column_threats(board, player, 2) * 4
-    board_score -= count_n_in_a_column_threats(board, opposing_player, 2) * 4.4
+    board_score -= count_n_in_a_column_threats(board, opposing_player, 2) * 4.1
 
     # consider just having 1 in a row (even less threatening)
 
     board_score += count_n_in_a_column_threats(board, player, 1) * 2
-    board_score -= count_n_in_a_column_threats(board, opposing_player, 1) * 2.4
+    board_score -= count_n_in_a_column_threats(board, opposing_player, 1) * 2.1
+
+    # check if a board configuration has multiple wins possible if another move is preformed
+    possible_immediate_future_wins, possible_immediate_future_losses = count_immediate_future_wins(board, player, opposing_player)
+    board_score += possible_immediate_future_wins * 15 if possible_immediate_future_wins >= 2 else 0
+    board_score -= possible_immediate_future_losses * 15 if possible_immediate_future_losses >= 2 else 0
+
     return board_score
+
+def count_immediate_future_wins(board, player, opposing_player):
+    """
+    Given a board, a player, and a opposing player
+    return the number of times player wins, return the number of times opposing player wins
+
+    Args: 
+        board (list[int]): list of board positions with 0s, 1s, 2s
+        player (int): represents the player (1 or 2)
+        player (int): represents the opposing player (1 or 2)
+    Return:
+       return a tuple (int) with the count of player 1 wins and player 1 losses
+    """
+    possible_moves = [i for i in range(7) if board[i] == 0]
+    possible_wins = 0
+    possible_losses = 0
+    for move in possible_moves:
+        move_slot_index = get_open_slot_index(board, move)
+        play_move(board, player, move)
+
+        if check_win_conditions(board) == player:
+            possible_wins += 1
+
+        board[move_slot_index] = 0
+
+        play_move(board, opposing_player, move)
+        if check_win_conditions(board) == opposing_player:
+            possible_losses += 1
+
+        board[move_slot_index] = 0
+    return possible_wins, possible_losses
 
 def count_n_in_a_column_threats(board, player, target_chain_length):
     """
@@ -197,7 +234,6 @@ def minimax(board, eval_fn, whose_turn, who_am_i, num_plys):
 
     return (best_value, best_moves)
 
-    
 def initialize_my_player_fn(num_plys=4):
     
     def my_player_fn(board, player):
@@ -244,7 +280,7 @@ def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
 
         # memoize 
         board_key = tuple(board)
-        if board_key  in playbook:
+        if board_key in playbook:
             best_moves = playbook[board_key]
         else:
             best_value, best_moves = minimax(board, evaluation_function, player, player, num_plys)
@@ -252,6 +288,25 @@ def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
 
         if len(best_moves) == 0:
             return None
-        else:
-            return random.choice(best_moves)
+        else:   
+            # moves might have the same minimax value after num_plys simulated turns
+            # but the scores of the boards immedieately after the move is played may differ
+            best_immediate_val = float('-inf')
+            best_move = None
+
+            for move in best_moves:
+                drop_index = get_open_slot_index(board, move)
+
+                new_board = board.copy()
+                new_board[drop_index] = player
+
+                score = evaluation_function(new_board, player)
+                # print("player:" + str(player) + " move: " + str(move) +  " score: "+ str(score))
+                if score > best_immediate_val:
+                    best_immediate_val = score
+                    best_move = move
+
+            return best_move
+        
+
     return my_player_fn
