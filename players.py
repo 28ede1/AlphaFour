@@ -76,12 +76,12 @@ def evaluation_function(board, player):
             center_count -= 1
         center_index -= 7
 
-    board_score += center_count * 10
+    board_score += center_count * 5
 
     # consider the number of columns where you have 3, 2, or just 1 of the same color in column, seperately
     # add negative weightings for the opposing player to get the ai to play more defensively
-    board_score += count_n_in_a_column_threats(board, player, 3) * 8
-    board_score -= count_n_in_a_column_threats(board, opposing_player, 3) * 8.1
+    board_score += count_n_in_a_column_threats(board, player, 3) * 10
+    board_score -= count_n_in_a_column_threats(board, opposing_player, 3) * 10.1
 
     # consider the number of columns where you have 2 in a column (less threatening then 3 in a row)
 
@@ -95,8 +95,8 @@ def evaluation_function(board, player):
 
     # check if a board configuration has multiple wins possible if another move is preformed
     possible_immediate_future_wins, possible_immediate_future_losses = count_immediate_future_wins(board, player, opposing_player)
-    board_score += possible_immediate_future_wins * 15 if possible_immediate_future_wins >= 2 else 0
-    board_score -= possible_immediate_future_losses * 15 if possible_immediate_future_losses >= 2 else 0
+    board_score += possible_immediate_future_wins * 15
+    board_score -= possible_immediate_future_losses * 15.1
 
     return board_score
 
@@ -253,10 +253,23 @@ def initialize_my_player_fn(num_plys=4):
             return None
 
         best_value, best_moves = minimax(board, evaluation_function, player, player, num_plys)
-        if len(best_moves) == 0:
-            return None
-        else:
-            return random.choice(best_moves)
+
+        # moves might have the same minimax value after num_plys simulated turns
+        # but the scores of the boards immedieately after the move is played may differ
+        best_immediate_val = float('-inf')
+        best_move = None
+
+        for move in best_moves:
+            drop_index = get_open_slot_index(board, move)
+            new_board = board.copy()
+            new_board[drop_index] = player
+
+            score = evaluation_function(new_board, player)
+            if score > best_immediate_val:
+                best_immediate_val = score
+                best_move = move
+
+        return best_move
     return my_player_fn
 
 def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
@@ -296,7 +309,6 @@ def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
 
             for move in best_moves:
                 drop_index = get_open_slot_index(board, move)
-
                 new_board = board.copy()
                 new_board[drop_index] = player
 
@@ -306,6 +318,4 @@ def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
                     best_move = move
 
             return best_move
-        
-
     return my_player_fn
