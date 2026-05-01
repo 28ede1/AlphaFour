@@ -301,7 +301,6 @@ def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
                 new_board[drop_index] = player
 
                 score = evaluation_function(new_board, player)
-                # print("player:" + str(player) + " move: " + str(move) +  " score: "+ str(score))
                 if score > best_immediate_val:
                     best_immediate_val = score
                     best_move = move
