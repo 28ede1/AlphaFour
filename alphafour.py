@@ -80,29 +80,68 @@ def load_training_data(playbook):
     return result_x, result_y
 
 
-# def initialize_params(input_dim=37, hidden_dim=64):
-#     theta1 = torch.zeros(hidden_dim, input_dim)
-#     theta2 = torch.zeros(hidden_dim, hidden_dim)
-#     theta3 = torch.zeros(1, hidden_dim)
-#     for theta in [theta1, theta2, theta3]:
-#         theta.uniform_(-0.4, 0.4)
-#         theta.requires_grad = True
-#     return {"theta1": theta1, "theta2": theta2, "theta3": theta3}
+def initialize_params(input_dim=134, hidden_dim=64):
+    """
+    3-layer network.
+    Creates 3 theta matrices meant to applies 3 linear transformations that
+    together will take an input of 134 features per instance, to 64 per isntance
+    to another 64 per instance, to 1 score per instance.
 
-# def run_neural_net(parameters, x):
-#     theta1 = parameters["theta1"]
-#     theta2 = parameters["theta2"]
-#     theta3 = parameters["theta3"]
+    All weights are initialized randomly (from [-0.4, 0.4])
+    Gradients are enabled for training theta parameters using gradient descent.
+
+    Parameters:
+        input_dim (int): integer who must equal length of what feature vectors will look like
+        hidden_dim (int): count learned intermediate features 
+
+    Returns:
+    dictionary structured as follows:
+    {
+        "theta1": tensor,
+        "theta2": tensor,
+        "theta3": tensor
+    }
+    """
+    theta1 = torch.zeros(hidden_dim, input_dim)
+    theta2 = torch.zeros(hidden_dim, hidden_dim)
+    theta3 = torch.zeros(1, hidden_dim)
+    for theta in [theta1, theta2, theta3]:
+        theta.uniform_(-0.4, 0.4)
+        theta.requires_grad = True
+    return {"theta1": theta1, "theta2": theta2, "theta3": theta3}
+
+def run_neural_net(parameters, x):
+    """
+    Completes a single pass of a 3-layer neural network.
+
+    Paremeters:
+        parameters (dict): dictionary structured as follows:
+        {
+            "theta1": tensor,
+            "theta2": tensor,
+            "theta3": tensor
+        }
+
+        x (torch.Tensor): feature matrix of some batch size N which
+        feature vector length 134
     
-#     x = x.transpose(0, 1)
-#     z = theta1 @ x
-#     stage_1_vector = torch.maximum(torch.zeros(z.shape[0], 1), z)
+    Returns:
+        torch.Tensor of shape (1,) representing probability that a move for a 
+        state is optimal 
+    """
+    theta1 = parameters["theta1"]
+    theta2 = parameters["theta2"]
+    theta3 = parameters["theta3"]
+    
+    x = x.transpose(0, 1)
+    z = theta1 @ x
+    stage_1_vector = torch.maximum(torch.zeros(z.shape[0], 1), z)
 
-#     z_2 = theta2 @ stage_1_vector
-#     stage_2_vector = torch.maximum(torch.zeros(z_2.shape[0], 1), z_2)
+    z_2 = theta2 @ stage_1_vector
+    stage_2_vector = torch.maximum(torch.zeros(z_2.shape[0], 1), z_2)
 
-#     z_3 = theta3 @ stage_2_vector
-#     return torch.sigmoid(z_3).flatten() # remove the extra dimension
+    z_3 = theta3 @ stage_2_vector
+    return torch.sigmoid(z_3).flatten() # remove the extra dimension
 
 # def compute_loss(output, y):
 #     loss = -1 * torch.log(y*output +(1-y)*(1-output))
