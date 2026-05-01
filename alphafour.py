@@ -1,5 +1,8 @@
 
 import torch
+from players import random_player_fn, initialize_my_player_fn
+from play import play_tournament
+from playbook import *
 
 def convert_board_state_to_vector(board, next_move):
     """
@@ -143,44 +146,78 @@ def run_neural_net(parameters, x):
     z_3 = theta3 @ stage_2_vector
     return torch.sigmoid(z_3).flatten() # remove the extra dimension
 
-# def compute_loss(output, y):
-#     loss = -1 * torch.log(y*output +(1-y)*(1-output))
-#     return torch.mean(loss)
+def compute_loss(output, y):
+    """
+    Computes loss using logistic regression loss function.
 
-# def evaluate_neural_net(parameters, x, y):
-#     accuracy = compute_nn_accuracy(parameters, x, y)
-#     ai_player_fn = create_nn_player_fn(parameters)
-#     wins, losses, ties = play_tournament(50, ai_player_fn, optimal_player_fn)
-#     accuracy_msg = f"Train accuracy: {accuracy: .3f}"
-#     tournament_msg = f"Tournament performance: {wins}-{losses}-{ties}"
-#     print(accuracy_msg + "; " + tournament_msg)
+    Parameters:
+        output (torch.Tensor): predicted output vector of probabilities
+        y (torch.Tensor): actual output (1 or 0)
+    Return:
+        float representing average loss value
+    """
+    loss = -1 * torch.log(y*output +(1-y)*(1-output))
+    return torch.mean(loss)
 
-# def compute_nn_accuracy(parameters, x, y):
-#     raise NotImplementedError("compute_nn_accuracy has not yet been implemented")
+def evaluate_neural_net(parameters, x, y):
+    accuracy = compute_nn_accuracy(parameters, x, y)
+    ai_player_fn = create_nn_player_fn(parameters)
+    wins, losses, ties = play_tournament(50, ai_player_fn, random_player_fn)
+    accuracy_msg = f"Train accuracy: {accuracy: .3f}"
+    tournament_msg = f"Tournament performance: {wins}-{losses}-{ties}"
+    print(accuracy_msg + "; " + tournament_msg)
 
+def compute_nn_accuracy(parameters, x, y):
+    # go through each of the training instances and convert that
+    # feature vector to a probability
 
-# def create_nn_player_fn(parameters):
-#     raise NotImplementedError("create_nn_player_fn has not yet been implemented")
-
-
-# def train_model(num_steps=100000, learning_rate=0.02, batch_size=128):
-#     X_train, y_train = load_training_data(compile_playbook())
-#     parameters = initialize_params()
-#     batch_start = 0
-#     for step in range(num_steps):
-#         if step % 5000 == 0:  # we evaluate every 5000 steps
-#             evaluate_neural_net(parameters, X_train, y_train)
-#         X_batch = X_train[batch_start : batch_start + batch_size, :]
-#         y_batch = y_train[batch_start : batch_start + batch_size]
-#         output = run_neural_net(parameters, X_batch)
-#         loss = compute_loss(output, y_batch)
-#         loss.backward()
-#         with torch.no_grad():
-#             for theta in parameters.values():
-#                 theta -= learning_rate * theta.grad
-#                 theta.grad = None
-#         batch_start = (batch_start + batch_size) % X_train.shape[0]
+    probability_vector = run_neural_net(parameters, x)
+    predicted = (probability_vector >= 0.5).int()
+    is_correct = (predicted == y).int()
+    return is_correct.sum() / len(is_correct)
 
 
-# if __name__ == "__main__":
-#     train_model()
+def create_nn_player_fn(parameters):
+    # using board as arg for player fn 
+    # make feature vectors for all possible moves into a single X
+    # use the run neural net to get vector of probabilities
+    # pick the highest
+
+    def my_player_fn(board):
+        valid_moves = [i for i in range(7) if board[i] == 0]
+        feature_vectors = []
+        choosen_moves = []
+        if len(valid_moves) == 0:
+            return None
+
+        for move in valid_moves:
+            feature_vectors.append(convert_board_state_to_vector(board, move))
+            choosen_moves.append(move)
+
+        x = torch.stack(feature_vectors)
+        probs = run_neural_net(parameters, x)
+        best_index = torch.argmax(probs)
+        return choosen_moves[best_index]
+    return my_player_fn
+
+def train_model(num_steps=100000, learning_rate=0.02, batch_size=128):
+    X_train, y_train = load_training_data(compile_playbook())
+    parameters = initialize_params()
+    batch_start = 0
+    for step in range(num_steps):
+        if step % 5000 == 0:  # we evaluate every 5000 steps
+            evaluate_neural_net(parameters, X_train, y_train)
+        X_batch = X_train[batch_start : batch_start + batch_size, :]
+        y_batch = y_train[batch_start : batch_start + batch_size]
+        output = run_neural_net(parameters, X_batch)
+        loss = compute_loss(output, y_batch)
+        loss.backward()
+        with torch.no_grad():
+            for theta in parameters.values():
+                theta -= learning_rate * theta.grad
+                theta.grad = None
+        batch_start = (batch_start + batch_size) % X_train.shape[0]
+
+
+if __name__ == "__main__":
+    train_model()
