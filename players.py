@@ -279,6 +279,9 @@ def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
         Create player_fn that choose the best next move to make for player out of all immediate possible moves.
         Adds board state along with best moves evaluated when called to a playbook dictionary.
 
+        Uses evaluation function to pick between the best moves found whichever one results in the best state for the player after
+        the move is made.
+
         Args: 
             board (list[int]): list of board positions with 0s, 1s, 2s
             player (int): represents the player (1 or 2)
@@ -292,7 +295,7 @@ def initialize_my_player_fn_with_playbook(playbook={}, num_plys=4):
             return None
 
         # memoize 
-        board_key = tuple(board)
+        board_key = tuple(board)  # save best_value AND best move (and adjust this as necessary)
         if board_key in playbook:
             best_moves = playbook[board_key]
         else:

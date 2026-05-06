@@ -6,16 +6,16 @@ def create_training_data_file():
     pb = {}
     ai_player_fn_2 = initialize_my_player_fn_with_playbook(pb, 6)
     
-    play_tournament(ai_player_fn_2, ai_player_fn_2, 300)
-    play_tournament(random_player_fn, ai_player_fn_2, 300)
-    play_tournament(ai_player_fn_2, random_player_fn, 300)
+    play_tournament(ai_player_fn_2, ai_player_fn_2, 1000)
+    play_tournament(random_player_fn, ai_player_fn_2, 1000)
+
     
-    with open("training_data/training.json", 'w') as writer:
+    with open("training.json", 'w') as writer:
         json.dump(list(pb.items()), writer)
 
 def compile_playbook():
     pb = {}
-    with open("training_data/training.json") as reader:
+    with open("training.json") as reader:
         data = json.load(reader)
     
     for entry in data:
@@ -24,5 +24,8 @@ def compile_playbook():
     return pb
 
 if __name__ == "__main__":
-    create_training_data_file()
+    # create_training_data_file()
     # compile_playbook()
+
+    pb = compile_playbook()
+    print(len(pb))

@@ -1,6 +1,7 @@
 
 import torch
-from players import random_player_fn, initialize_my_player_fn
+import numpy
+from players import random_player_fn, initialize_my_player_fn_with_playbook
 from play import play_tournament
 from playbook import *
 
@@ -83,10 +84,10 @@ def load_training_data(playbook):
     return result_x, result_y
 
 
-def initialize_params(input_dim=134, hidden_dim=64):
+def initialize_params(input_dim=134, hidden_dim=128):
     """
     3-layer network.
-    Creates 3 theta matrices meant to applies 3 linear transformations that
+    Creates theta matrices meant to applies linear transformations that
     together will take an input of 134 features per instance, to 64 per isntance
     to another 64 per instance, to 1 score per instance.
 
@@ -102,27 +103,34 @@ def initialize_params(input_dim=134, hidden_dim=64):
     {
         "theta1": tensor,
         "theta2": tensor,
-        "theta3": tensor
+        "theta3": tensor,
+        "theta4": tensor,
+        "theta5": tensor
     }
     """
     theta1 = torch.zeros(hidden_dim, input_dim)
     theta2 = torch.zeros(hidden_dim, hidden_dim)
-    theta3 = torch.zeros(1, hidden_dim)
-    for theta in [theta1, theta2, theta3]:
-        theta.uniform_(-0.4, 0.4)
+    theta3 = torch.zeros(hidden_dim, hidden_dim)
+    theta4 = torch.zeros(hidden_dim, hidden_dim)
+    theta5 = torch.zeros(1, hidden_dim)
+    for theta in [theta1, theta2, theta3, theta4, theta5]:
+        # theta.uniform_(-0.4, 0.4)
+        torch.nn.init.xavier_uniform_(theta) # substantial impact on preformance when using this
         theta.requires_grad = True
-    return {"theta1": theta1, "theta2": theta2, "theta3": theta3}
+    return {"theta1": theta1, "theta2": theta2, "theta3": theta3, "theta4" : theta4, "theta5": theta5}
 
 def run_neural_net(parameters, x):
     """
-    Completes a single pass of a 3-layer neural network.
+    Completes a single pass of a n-layer neural network.
 
     Paremeters:
         parameters (dict): dictionary structured as follows:
         {
             "theta1": tensor,
             "theta2": tensor,
-            "theta3": tensor
+            "theta3": tensor,
+            "theta4": tensor,
+            "theta5": tensor
         }
 
         x (torch.Tensor): feature matrix of some batch size N which
@@ -135,6 +143,8 @@ def run_neural_net(parameters, x):
     theta1 = parameters["theta1"]
     theta2 = parameters["theta2"]
     theta3 = parameters["theta3"]
+    theta4 = parameters["theta4"]
+    theta5 = parameters["theta5"]
     
     x = x.transpose(0, 1)
     z = theta1 @ x
@@ -144,7 +154,13 @@ def run_neural_net(parameters, x):
     stage_2_vector = torch.maximum(torch.zeros(z_2.shape[0], 1), z_2)
 
     z_3 = theta3 @ stage_2_vector
-    return torch.sigmoid(z_3).flatten() # remove the extra dimension
+    stage_3_vector = torch.maximum(torch.zeros(z_3.shape[0], 1), z_3)
+
+    z_4 = theta4 @ stage_3_vector
+    stage_4_vector = torch.maximum(torch.zeros(z_4.shape[0], 1), z_4)
+
+    z_5 = theta5 @ stage_4_vector
+    return torch.sigmoid(z_5).flatten() # remove the extra dimension 
 
 def compute_loss(output, y):
     """
@@ -159,10 +175,11 @@ def compute_loss(output, y):
     loss = -1 * torch.log(y*output +(1-y)*(1-output))
     return torch.mean(loss)
 
-def evaluate_neural_net(parameters, x, y):
+def evaluate_neural_net(pb, parameters, x, y):
     accuracy = compute_nn_accuracy(parameters, x, y)
     ai_player_fn = create_nn_player_fn(parameters)
-    wins, losses, ties = play_tournament(50, ai_player_fn, random_player_fn)
+    sparing_player_fn = random_player_fn
+    wins, losses, ties = play_tournament(ai_player_fn, sparing_player_fn, 1000)
     accuracy_msg = f"Train accuracy: {accuracy: .3f}"
     tournament_msg = f"Tournament performance: {wins}-{losses}-{ties}"
     print(accuracy_msg + "; " + tournament_msg)
@@ -176,14 +193,13 @@ def compute_nn_accuracy(parameters, x, y):
     is_correct = (predicted == y).int()
     return is_correct.sum() / len(is_correct)
 
-
 def create_nn_player_fn(parameters):
     # using board as arg for player fn 
     # make feature vectors for all possible moves into a single X
     # use the run neural net to get vector of probabilities
     # pick the highest
 
-    def my_player_fn(board):
+    def my_player_fn(board, player):
         valid_moves = [i for i in range(7) if board[i] == 0]
         feature_vectors = []
         choosen_moves = []
@@ -200,24 +216,87 @@ def create_nn_player_fn(parameters):
         return choosen_moves[best_index]
     return my_player_fn
 
-def train_model(num_steps=100000, learning_rate=0.02, batch_size=128):
-    X_train, y_train = load_training_data(compile_playbook())
+def train_model(num_steps=100000, learning_rate=0.012, batch_size=128):
+    pb = compile_playbook()
+    X_train, y_train = load_training_data(pb)
     parameters = initialize_params()
+    
+    momentum_rate = .8
+    small_number = .000000000000000000000001
+    previous_parameters = {theta_key : parameters[theta_key].clone() for theta_key in parameters.keys()}
+    parameter_averages = {}
+    
     batch_start = 0
     for step in range(num_steps):
         if step % 5000 == 0:  # we evaluate every 5000 steps
-            evaluate_neural_net(parameters, X_train, y_train)
+            evaluate_neural_net(pb, parameters, X_train, y_train)
         X_batch = X_train[batch_start : batch_start + batch_size, :]
         y_batch = y_train[batch_start : batch_start + batch_size]
         output = run_neural_net(parameters, X_batch)
         loss = compute_loss(output, y_batch)
         loss.backward()
         with torch.no_grad():
-            for theta in parameters.values():
-                theta -= learning_rate * theta.grad
-                theta.grad = None
+
+
+            # VANILLA GRADIENT DESCENT
+            # for theta in parameters.values():
+            #     theta -= learning_rate * theta.grad
+            #     theta.grad = None
+
+            # MOMENTUM GRADIENT DESCENT
+            for theta_key in parameters.keys():
+                if step == 0:
+                    parameters[theta_key] -= learning_rate * parameters[theta_key].grad
+
+                else:
+                    momentum = momentum_rate * (parameters[theta_key] - previous_parameters[theta_key])
+                    previous_parameters[theta_key] = parameters[theta_key].clone()
+                    parameters[theta_key] -= learning_rate * parameters[theta_key].grad + momentum
+                parameters[theta_key].grad = None
+
+            # MOMENTUM GRADIENT DESCENT + ADAPTIVE GRADIENT DESCENT
+            # for theta_key in parameters.keys():
+                
+            # #     # add theta label --> avg pair to the parameter_averages the first time its called
+            # #     # afterwards, retrieve the current odemeter value and add that average
+
+            #     if theta_key not in parameter_averages:
+            #         parameter_averages[theta_key] = ((parameters[theta_key].grad)**2).mean()
+            #     else:
+            #        parameter_averages[theta_key] += ((parameters[theta_key].grad)**2).mean()
+
+            #     current_learning_rate = (learning_rate) / (small_number + parameter_averages[theta_key])
+
+            #     if step == 0:
+            #         parameters[theta_key] -= current_learning_rate * parameters[theta_key].grad
+            #     else:
+            #         momentum = momentum_rate * (parameters[theta_key] - previous_parameters[theta_key])
+            #         previous_parameters[theta_key] = parameters[theta_key].clone()
+            #         parameters[theta_key] -= learning_rate * parameters[theta_key].grad + momentum
+            #     parameters[theta_key].grad = None
+
+
         batch_start = (batch_start + batch_size) % X_train.shape[0]
+    return parameters
 
+# to submit to gradescope
+def load_my_ai():
+    optimal_parameters = train_model()
+    def my_neural_net_player(board):
+        valid_moves = [i for i in range(7) if board[i] == 0]
+        feature_vectors = []
+        choosen_moves = []
+        if len(valid_moves) == 0:
+            return None
 
+        for move in valid_moves:
+            feature_vectors.append(convert_board_state_to_vector(board, move))
+            choosen_moves.append(move)
+
+        x = torch.stack(feature_vectors)
+        probs = run_neural_net(optimal_parameters, x)
+        best_index = torch.argmax(probs)
+        return choosen_moves[best_index]
+    return my_neural_net_player
 if __name__ == "__main__":
     train_model()
