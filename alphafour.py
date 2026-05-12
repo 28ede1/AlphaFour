@@ -280,8 +280,13 @@ def train_model(num_steps=100000, learning_rate=0.012, batch_size=128):
     return parameters
 
 # to submit to gradescope
+with open("optimal_parameters.json") as reader:
+    optimal_parameters = json.load(reader)
+
+for key in optimal_parameters:
+    optimal_parameters[key] = torch.tensor(optimal_parameters[key])
+
 def load_my_ai():
-    optimal_parameters = train_model()
     def my_neural_net_player(board):
         valid_moves = [i for i in range(7) if board[i] == 0]
         feature_vectors = []
@@ -298,5 +303,12 @@ def load_my_ai():
         best_index = torch.argmax(probs)
         return choosen_moves[best_index]
     return my_neural_net_player
+
 if __name__ == "__main__":
-    train_model()
+    optimal_parameters = train_model()
+
+    for key in optimal_parameters:
+        optimal_parameters[key] = print(optimal_parameters[key])
+
+    with open("optimal_parameters.json", 'w') as writer:
+        json.dump(optimal_parameters, writer)

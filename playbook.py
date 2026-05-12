@@ -4,9 +4,10 @@ import json
 
 def create_training_data_file():
     pb = {}
-    ai_player_fn_2 = initialize_my_player_fn_with_playbook(pb, 6)
+    ai_player_fn_2 = initialize_my_player_fn_with_playbook(pb, 8)
     
     play_tournament(ai_player_fn_2, ai_player_fn_2, 1000)
+    play_tournament(random_player_fn, ai_player_fn_2, 1000)
     play_tournament(random_player_fn, ai_player_fn_2, 1000)
 
     
@@ -24,8 +25,8 @@ def compile_playbook():
     return pb
 
 if __name__ == "__main__":
-    # create_training_data_file()
+    create_training_data_file()
     # compile_playbook()
 
-    pb = compile_playbook()
-    print(len(pb))
+    # pb = compile_playbook()
+    # print(len(pb))
